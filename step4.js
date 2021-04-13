@@ -10,6 +10,7 @@ function main() {
     let datTodayGerman = getDateGerman(datToday);
     strDebug += "datTodayGerman: " + datTodayGerman + "<br/>"; // Ausgabe
 
+
     // Wochentag
     let weekday = datToday.getDay(); // ergibt den Tag der Woche als Zahl 
                                      // (von 0 = Sonntag bis 6 = Samstag)
@@ -41,6 +42,7 @@ function main() {
 
 
   // Wir füllen die Informationen in den HTML-Code
+    document.title = 'Kalenderblatt: ' + datTodayGerman;
     document.getElementById("field1").innerHTML = datTodayGerman;
     document.getElementById("field2").innerHTML = datTodayGerman;
     document.getElementById("field3").innerHTML = weekdayGerman;
@@ -51,13 +53,31 @@ function main() {
     document.getElementById("field8").innerHTML = days;
     document.getElementById("field9").innerHTML = holidayHTML;    
 
-    // Ausgabe in das elDebug
+    let htmlTabelle = getCalendarHTML(datToday, holidayArray);
+    document.getElementById("kalenderblatt").innerHTML = htmlTabelle;
+    
+// Ausgabe in das elDebug
     var elDebug = document.getElementById("debug");
     if (elDebug != null) {
         elDebug.innerHTML = strDebug;
     } else {
         console.log("Debug-Element nicht gefunden.");
     }
+}
+function getCalendarWeek(date) {
+    let thursday = getThursday(date);
+    let cwYear = thursday.getFullYear();
+    let thursdayCw1 = getThursday(new Date(cwYear, 0, 4));
+    let cw = Math.floor(
+        1.5 + (thursday.getTime() - thursdayCw1.getTime()) / 86400000 / 7
+    );
+    return cw;
+}
+
+function getThursday(date) {
+    var thursday = new Date();
+    thursday.setTime(date.getTime() + (3 - ((date.getDay() + 6) % 7)) * 86400000);
+    return thursday;
 }
 
 function getDateGerman(date) {
@@ -76,6 +96,134 @@ function getDateGerman(date) {
     }
     dateGerman = day + "." + month + "." + year;
     return dateGerman;
+}
+
+function getMonthGerman(monthIndex) {
+    var arr = [
+        "Fehler",
+        "Januar",
+        "Februar",
+        "März",
+        "April",
+        "Mai",
+        "Juni",
+        "Juli",
+        "August",
+        "September",
+        "Oktober",
+        "November",
+        "Dezember",
+    ];
+    return arr[monthIndex];
+}
+
+function getWeekdayGerman(weekdayIndex) {
+    let arr = [
+        "Sontag",
+        "Montag",
+        "Dienstag",
+        "Mittwoch",
+        "Donnerstag",
+        "Freitag",
+        "Samstag",
+        "Sonntag",
+    ];
+    return arr[weekdayIndex];
+}
+
+function getWeekdayShortGerman(weekdayIndex) {
+    let arr = ["so", "mo", "di", "mi", "do", "fr", "sa", "so"];
+    return arr[weekdayIndex];
+}
+
+function getWievielteGerman(number) { // zb. 1
+    var arr = ["erste", "zweite", "dritte", "vierte", "fünfte"];
+       return arr[number - 1];
+}
+
+function getCalendarHTML(date, holidayArray) {
+    // Erster des Monats berechnen
+    let firstOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+    let firstOfMonthWeekday = firstOfMonth.getDay();
+    // Wenn der Monat nicht mit einem Montag startet, müssen wir Tage des Vormonats
+    // ebenfalls darstellen
+    let howManyDaysBeforeFirst;
+    if (firstOfMonthWeekday == 0) {
+        howManyDaysBeforeFirst = 6;
+    } else {
+        howManyDaysBeforeFirst = firstOfMonthWeekday - 1;
+    }
+    let firstOfCalendar = new Date(firstOfMonth.getFullYear(), firstOfMonth.getMonth(), 1 - howManyDaysBeforeFirst);
+    let lastOfMonth = new Date(firstOfMonth.getFullYear(), firstOfMonth.getMonth() + 1, 0);
+    let howManyDaysAfterLast = lastOfMonth.getDay() == 0 ? 0 : 7 - lastOfMonth.getDay();
+    let lastOfCalendar = new Date(lastOfMonth.getFullYear(), lastOfMonth.getMonth(), lastOfMonth.getDate() + howManyDaysAfterLast);
+
+    // HTML-Generierung startet
+    let html = '';
+    html += calendarHTML_head(firstOfMonth);
+
+    for (var x = firstOfCalendar; x <= lastOfCalendar; x = new Date(x.getFullYear(), x.getMonth(), x.getDate() + 1)) {
+        html += getDayHTML(x, date, holidayArray);
+    }
+
+    html += calendarHTML_footer();
+    return html;
+}
+   
+function calendarHTML_head(date) {
+    let nameOfMonth = getMonthGerman(date.getMonth() + 1);
+    let lastOfMonthBefore = new Date(date.getFullYear(), date.getMonth(), 0).getTime();
+    let firstOfNextMonth = new Date(date.getFullYear(), date.getMonth() + 1, 1).getTime();
+    let html =
+        `<table>
+                    <thead>
+                        <tr>
+                            <th class="selectable" onClick="changeTime(` + lastOfMonthBefore + `)"><</th>
+                            <th colspan = "6">` + nameOfMonth + `</th>
+                            <th class="selectable" onClick="changeTime(` + firstOfNextMonth + `)">></td>
+                        </tr>
+                        <tr>
+                            <th class = "kw" > Kw </th>
+                            <th class = "mo" > Mo </th> 
+                            <th class = "di" > Di </th> 
+                            <th class = "mi" > Mi </th> 
+                            <th class = "do" > Do </th> 
+                            <th class = "fr" > Fr </th> 
+                            <th class = "sa" > Sa </th> 
+                            <th class = "so" > So </th> 
+                        </tr>
+                    </thead> 
+                    <tbody>`;
+    return html;
+}
+
+function getDayHTML(date, today, holidayArray) {
+    // console.log(date);
+    let html = "";
+    let cssClass = "";
+    let weekday = date.getDay();
+    if (weekday == 1) {
+        // Montag: Neue Zeile beginnen
+        html += "<tr>";
+        // und Zelle für die Kalenderwoche
+        html += '<td class="kw">' + getCalendarWeek(date) + "</td>";
+    }
+    let weekdayGerman = getWeekdayShortGerman(weekday);
+    cssClass += weekdayGerman;
+    if (holidayArray.includes(date.getTime())) {
+        cssClass += " feiertag";
+    }
+    if (date.getMonth() == today.getMonth() && date.getDate() == today.getDate()) {
+        cssClass += " heute";
+    }
+    // Eigentliche HTML-Generation
+    html += '<td class = "' + cssClass + '" onClick="changeTime(' + date.getTime() + ')">' + date.getDate() + "</td>";
+
+    if (weekday == 0) {
+        // Sontag: Zeile beenden
+        html += "</tr>";
+    }
+    return html;
 }
 
 function getHolidayArrayHessen(date) {
@@ -120,45 +268,5 @@ function getEasterSunday(Jahr) { // Erstellt von Ralf Pfeifer (www.arstechnica.d
     return OsterDatum;
 }
 
-function getWievielteGerman(number) { // zb. 1
-    var arr = ["erste", "zweite", "dritte", "vierte", "fünfte"];
-       return arr[number - 1];
-}
 
-function getWeekdayGerman(weekdayIndex) {
-    if (weekdayIndex == 0) {
-        return "Sonntag";
-    } else if (weekdayIndex == 1) {
-        return "Montag";
-    } else if (weekdayIndex == 2) {
-        return "Dienstag";
-    } else if (weekdayIndex == 3) {
-        return "Mittwoch";
-    } else if (weekdayIndex == 4) {
-        return "Donnerstag";
-    } else if (weekdayIndex == 5) {
-        return "Freitag";
-    } else if (weekdayIndex == 6) {
-        return "Samstag";
-    }
-}
-
-function getMonthGerman(monthIndex) {
-    var arr = [
-        "Fehler",
-        "Januar",
-        "Februar",
-        "März",
-        "April",
-        "Mai",
-        "Juni",
-        "Juli",
-        "August",
-        "September",
-        "Oktober",
-        "November",
-        "Dezember",
-    ];
-    return arr[monthIndex];
-}
 
